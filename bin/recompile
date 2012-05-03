@@ -22,8 +22,6 @@ do_log()
 
 CURL_FLAGS="--silent --max-time 60 --location"
 
-BIN_DIR=$(dirname $0)
-
 LIBMCRYPT_VERSION=2.5.8 
 MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
 APACHE_VERSION="2.2.22"
@@ -39,7 +37,6 @@ APACHE_ROOT=/app/apache
 PHP_ROOT=/app/php
 
 BUILD_DIR=`mktemp -d`
-
 pushd "$BUILD_DIR"
 
 log_action apache "Downloading apache from $APACHE_URL"
