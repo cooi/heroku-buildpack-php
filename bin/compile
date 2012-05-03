@@ -51,10 +51,12 @@ MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT
 APACHE_VERSION="2.2.22"
 APACHE_DIR=httpd-${APACHE_VERSION}
 APACHE_URL=http://www.apache.org/dist/httpd/httpd-${APACHE_VERSION}.tar.bz2
+APACHE_ROOT=/app/apache
 
 PHP_VERSION="5.4.1"
 PHP_DIR=php-${PHP_VERSION}
 PHP_URL=http://us.php.net/distributions/php-${PHP_VERSION}.tar.bz2
+PHP_ROOT=/app/php
 
 pushd "$BUILD_DIR"
 # move app things to www
@@ -74,10 +76,10 @@ if [ ! -d "$APACHE_DIR" ]; then
   log_fail "Failed to find apache directory $APACHE_DIR"
 fi 
 pushd "$APACHE_DIR"
-./configure --prefix=/app/apache --enable-rewrite >> $BUILD_LOG 2>&1
+./configure --prefix=$APACHE_ROOT --enable-rewrite >> $BUILD_LOG 2>&1
 make >> $BUILD_LOG 2>&1
-make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
-make install
+#make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
+make install >> $BUILD_LOG 2>&1
 popd
 
 log_action mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
@@ -91,7 +93,8 @@ autoconf -W no-obsolete -W no-syntax >> $BUILD_LOG 2>&1
 automake >> $BUILD_LOG 2>&1
 ./configure --prefix=/app >> $BUILD_LOG 2>&1
 make >> $BUILD_LOG 2>&1
-make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
+#make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
+make install >> $BUILD_LOG 2>&1
 popd
 
 log_action php "Downloading php from $PHP_URL"
@@ -100,12 +103,15 @@ if [ ! -d "$PHP_DIR" ]; then
   log_fail "Failed to find php directory $PHP_DIR"
 fi
 pushd $PHP_DIR
-#./configure --prefix=/app/php --enable-static=gd --with-apxs2=/usr/sbin/apxs --with-mysql --with-pdo-mysql --with-pgsql --with-pdo-pgsql --with-iconv --with-gd --with-curl=/usr/lib --with-config-file-path=/app/php --enable-soap=shared --with-openssl --with-mcrypt --with-jpeg-dir=/usr --enable-static=openssl --enable-static=mcrypt
+./configure --prefix=$PHP_ROOT --with-apxs2=${APACHE_ROOT}/bin/apxs --with-mysql --with-pdo-mysql --with-pgsql --with-pdo-pgsql --with-iconv --with-gd --with-curl --with-config-file-path=$PHP_ROOT --enable-soap=shared --with-openssl --with-mcrypt=/app --with-jpeg-dir=/usr
+make
+make install
+#make >> $BUILD_LOG 2>&1
 
 popd
 
 
-cp -a ${BUILD_DIR}/app/* "$BUILD_DIR"
+#cp -a ${BUILD_DIR}/app/* "$BUILD_DIR"
 
 pushd "$BUILD_DIR"
 cp $BUILD_LOG "$BUILD_DIR"
