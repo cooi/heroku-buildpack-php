@@ -9,18 +9,23 @@ set -x
 
 log_action() 
 {
-  local category=shift
-  echo "-----> [$category] $@"
+  do_log '----->' $@
 }
 
 log_fail() 
 {
-  local category=shift
-  echo "XXXXXX [$category] $@"
+  do_log 'XXXXXX' $@
+}
+
+do_log()
+{
+  local prefix=$1
+  local category=$2
+  shift 2
+  echo "$prefix [${category}] $@"
 }
 
 CURL_FLAGS="--silent --max-time 60 --location"
-
 
 BIN_DIR=$(dirname $0)
 BUILD_DIR=$1
@@ -35,7 +40,7 @@ ls /
 
 pwd
 
-# config
+BUILD_LOG=build.log
 LIBMCRYPT_VERSION=2.5.8 
 MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
 MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
@@ -45,12 +50,14 @@ if [ ! -d "$MCRYPT_DIR" ]; then
   log_fail "Failed to find mcrypt directory $MCRYPT_DIR"
 fi 
 pushd "$MCRYPT_DIR" 
-autoconf -W no-obsolete -W no-syntax
-automake 
-./configure --prefix=/app
-make
-make DESTDIR=$BUILD_DIR install
+autoconf -W no-obsolete -W no-syntax >> $BUILD_LOG 2>&1
+automake >> $BUILD_LOG 2>&1
+./configure --prefix=/app >> $BUILD_LOG 2>&1
+make >> $BUILD_LOG 2>&1
+make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
 popd
+
+cd $BUILD_DIR
 
 APACHE_VERSION="2.2.22"
 APACHE_PATH="apache"
@@ -91,6 +98,8 @@ chmod +x boot.sh
 
 # clean the cache
 rm -rf $CACHE_DIR/*
+
+ls $BUILD_DIR
 
 exit
 
