@@ -7,6 +7,8 @@
 #set -e
 set -x
 
+BUILD_LOG=`pwd`/build.log
+
 log_action() 
 {
   do_log '----->' $@
@@ -22,7 +24,7 @@ do_log()
   local prefix=$1
   local category=$2
   shift 2
-  echo "$prefix [${category}] $@"
+  echo "$prefix [${category}] $@" |tee -a $BUILD_LOG
 }
 
 CURL_FLAGS="--silent --max-time 60 --location"
@@ -40,16 +42,19 @@ ls /
 
 pwd
 
-BUILD_LOG=`pwd`/build.log
+
 
 LIBMCRYPT_VERSION=2.5.8 
 MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
 MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
 
 APACHE_VERSION="2.2.22"
-APACHE_PATH="apache"
-PHP_VERSION="5.3.10"
-PHP_PATH="php"
+APACHE_DIR=httpd-${APACHE_VERSION}
+APACHE_URL=http://www.apache.org/dist/httpd/httpd-${APACHE_VERSION}.tar.bz2
+
+PHP_VERSION="5.4.1"
+PHP_DIR=php-${PHP_VERSION}
+PHP_URL=http://us.php.net/distributions/php-${PHP_VERSION}.tar.bz2
 
 pushd "$BUILD_DIR"
 # move app things to www
@@ -63,11 +68,24 @@ if [ -f www/Procfile ]; then
 fi
 popd
 
+log_action apache "Downloading apache from $APACHE_URL"
+curl $CURL_FLAGS "$APACHE_URL" | tar xj
+if [ ! -d "$APACHE_DIR" ]; then
+  log_fail "Failed to find apache directory $APACHE_DIR"
+fi 
+pushd "$APACHE_DIR"
+./configure --prefix=/app/apache --enable-rewrite >> $BUILD_LOG 2>&1
+make >> $BUILD_LOG 2>&1
+make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
+make install
+popd
+
 log_action mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
 curl $CURL_FLAGS "$MCRYPT_URL" | tar xj
 if [ ! -d "$MCRYPT_DIR" ]; then
   log_fail "Failed to find mcrypt directory $MCRYPT_DIR"
 fi 
+
 pushd "$MCRYPT_DIR" 
 autoconf -W no-obsolete -W no-syntax >> $BUILD_LOG 2>&1
 automake >> $BUILD_LOG 2>&1
@@ -76,12 +94,21 @@ make >> $BUILD_LOG 2>&1
 make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
 popd
 
+log_action php "Downloading php from $PHP_URL"
+curl $CURL_FLAGS "$PHP_URL" | tar xj
+if [ ! -d "$PHP_DIR" ]; then
+  log_fail "Failed to find php directory $PHP_DIR"
+fi
+pushd $PHP_DIR
+#./configure --prefix=/app/php --enable-static=gd --with-apxs2=/usr/sbin/apxs --with-mysql --with-pdo-mysql --with-pgsql --with-pdo-pgsql --with-iconv --with-gd --with-curl=/usr/lib --with-config-file-path=/app/php --enable-soap=shared --with-openssl --with-mcrypt --with-jpeg-dir=/usr --enable-static=openssl --enable-static=mcrypt
+
+popd
+
+
+cp -a ${BUILD_DIR}/app/* "$BUILD_DIR"
+
 pushd "$BUILD_DIR"
 cp $BUILD_LOG "$BUILD_DIR"
-
-APACHE_URL="https://s3.amazonaws.com/php-lp/apache-$APACHE_VERSION.tar.gz"
-echo "-----> Bundling Apache version $APACHE_VERSION"
-curl $CURL_FLAGS "$APACHE_URL" | tar xz
 
 cat >>boot.sh <<EOF
 for var in \`env|cut -f1 -d=\`; do
