@@ -38,7 +38,7 @@ MCRYPT_ROOT=/app
 APACHE_ROOT=/app/apache
 PHP_ROOT=/app/php
 
-BUILD_DIR=`mktemp`
+BUILD_DIR=`mktemp -d`
 
 pushd "$BUILD_DIR"
 
