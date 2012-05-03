@@ -1,16 +1,26 @@
 #!/usr/bin/env bash
 # bin/compile <build-dir> <cache-dir>
+# BUILD_DIR is modified between builds
+# CACHE_DIR is retained between builds
 
 # fail fast
 #set -e
 set -x
 
+log_action() 
+{
+  local category=shift
+  echo "-----> [$category] $@"
+}
 
-# config
-APACHE_VERSION="2.2.22"
-APACHE_PATH="apache"
-PHP_VERSION="5.3.10"
-PHP_PATH="php"
+log_fail() 
+{
+  local category=shift
+  echo "XXXXXX [$category] $@"
+}
+
+CURL_FLAGS="--silent --max-time 60 --location"
+
 
 BIN_DIR=$(dirname $0)
 BUILD_DIR=$1
@@ -20,7 +30,35 @@ LP_DIR=`cd $(dirname $0); cd ..; pwd`
 # include .files when moving things around
 shopt -s dotglob
 
-id -un
+echo "$LP_DIR"
+ls "$LP_DIR"
+echo "/"
+ls /
+
+pwd
+
+# config
+LIBMCRYPT_VERSION=2.5.8 
+MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
+MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
+do_log mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
+curl $CURL_FLAGS "$MCRYPT_URL" | tar xj
+if [ ! -d "$MCRYPT_DIR" ]; then
+  log_fail "Failed to find mcrypt directory $MCRYPT_DIR"
+  echo "
+fi 
+pushd "$MCRYPT_DIR" 
+autoconf -W no-obsolete -W no-syntax
+automake 
+./configure --prefix=/app
+make
+make DESTDIR=$BUILD_DIR install
+popd
+
+APACHE_VERSION="2.2.22"
+APACHE_PATH="apache"
+PHP_VERSION="5.3.10"
+PHP_PATH="php"
 
 cd $BUILD_DIR
 
