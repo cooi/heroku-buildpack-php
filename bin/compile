@@ -30,9 +30,7 @@ LP_DIR=`cd $(dirname $0); cd ..; pwd`
 # include .files when moving things around
 shopt -s dotglob
 
-echo "$LP_DIR"
 ls "$LP_DIR"
-echo "/"
 ls /
 
 pwd
@@ -41,11 +39,10 @@ pwd
 LIBMCRYPT_VERSION=2.5.8 
 MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
 MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
-do_log mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
+log_action mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
 curl $CURL_FLAGS "$MCRYPT_URL" | tar xj
 if [ ! -d "$MCRYPT_DIR" ]; then
   log_fail "Failed to find mcrypt directory $MCRYPT_DIR"
-  echo "
 fi 
 pushd "$MCRYPT_DIR" 
 autoconf -W no-obsolete -W no-syntax
