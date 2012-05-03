@@ -10,6 +10,7 @@ log_action()
 log_fail() 
 {
   do_log 'XXXXXX' "$@"
+  exit
 }
 
 do_log()
@@ -44,6 +45,19 @@ curl $CURL_FLAGS "$APACHE_URL" | tar xj
 if [ ! -d "$APACHE_DIR" ]; then
   log_fail "Failed to find apache directory $APACHE_DIR"
 fi 
+
+log_action mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
+curl $CURL_FLAGS "$MCRYPT_URL" | tar xj
+if [ ! -d "$MCRYPT_DIR" ]; then
+  log_fail "Failed to find mcrypt directory $MCRYPT_DIR"
+fi 
+
+log_action php "Downloading php from $PHP_URL"
+curl $CURL_FLAGS "$PHP_URL" | tar xj
+if [ ! -d "$PHP_DIR" ]; then
+  log_fail "Failed to find php directory $PHP_DIR"
+fi
+
 pushd "$APACHE_DIR"
 ./configure --prefix=$APACHE_ROOT --enable-rewrite >> $BUILD_LOG 2>&1
 make >> $BUILD_LOG 2>&1
@@ -52,11 +66,6 @@ make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
 popd
 rm -rf "$APACHE_DIR"
 
-log_action mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
-curl $CURL_FLAGS "$MCRYPT_URL" | tar xj
-if [ ! -d "$MCRYPT_DIR" ]; then
-  log_fail "Failed to find mcrypt directory $MCRYPT_DIR"
-fi 
 pushd "$MCRYPT_DIR" 
 autoconf -W no-obsolete -W no-syntax >> $BUILD_LOG 2>&1
 automake >> $BUILD_LOG 2>&1
@@ -67,11 +76,6 @@ make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
 popd
 rm -rf "$MCRYPT_DIR" 
 
-log_action php "Downloading php from $PHP_URL"
-curl $CURL_FLAGS "$PHP_URL" | tar xj
-if [ ! -d "$PHP_DIR" ]; then
-  log_fail "Failed to find php directory $PHP_DIR"
-fi
 pushd "$PHP_DIR"
 ./configure --prefix="$PHP_ROOT" --with-apxs2=${APACHE_ROOT}/bin/apxs --with-mysql --with-pdo-mysql --with-pgsql --with-pdo-pgsql --with-iconv --with-gd --with-curl --with-config-file-path="$PHP_ROOT" --enable-soap=shared --with-openssl --with-mcrypt="$MCRYPT_ROOT" --with-jpeg-dir=/usr >> $BUILD_LOG 2>&1
 make >> $BUILD_LOG 2>&1
