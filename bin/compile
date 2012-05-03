@@ -40,7 +40,7 @@ ls /
 
 pwd
 
-BUILD_LOG=build.log
+BUILD_LOG=`pwd`/build.log
 LIBMCRYPT_VERSION=2.5.8 
 MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
 MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
