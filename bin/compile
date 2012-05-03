@@ -11,12 +11,12 @@ BUILD_LOG=`pwd`/build.log
 
 log_action() 
 {
-  do_log '----->' $@
+  do_log '----->' "$@"
 }
 
 log_fail() 
 {
-  do_log 'XXXXXX' $@
+  do_log 'XXXXXX' "$@"
 }
 
 do_log()
@@ -144,13 +144,6 @@ ls $BUILD_DIR
 ls $LP_DIR
 
 exit
-
-#S3_BUCKET=heroku-buildpack-wordpress
-#PHP_URL="https://s3.amazonaws.com/php-lp/php-$PHP_VERSION.tar.gz"
-PHP_URL="http://projects.interlated.com.au/php.tgz"
-#PHP_URL="https://s3.amazonaws.com/${S3_BUCKET}/php-${PHP_VERSION}-with-fpm-heroku.tar.gz"
-echo "-----> Bundling PHP version $PHP_VERSION"
-curl $CURL_FLAGS "$PHP_URL" | tar xz
 
 PHPSO=apache/modules/libphp5.so
 if [ -f $PHPSO ]; then

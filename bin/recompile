@@ -1,0 +1,82 @@
+#!/bin/bash
+
+BUILD_LOG=`pwd`/build.log
+
+log_action() 
+{
+  do_log '----->' "$@"
+}
+
+log_fail() 
+{
+  do_log 'XXXXXX' "$@"
+}
+
+do_log()
+{
+  local prefix=$1
+  local category=$2
+  shift 2
+  echo "$prefix [${category}] $@" |tee -a $BUILD_LOG
+}
+
+CURL_FLAGS="--silent --max-time 60 --location"
+
+BIN_DIR=$(dirname $0)
+
+LIBMCRYPT_VERSION=2.5.8 
+MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
+APACHE_VERSION="2.2.22"
+APACHE_URL=http://www.apache.org/dist/httpd/httpd-${APACHE_VERSION}.tar.bz2
+PHP_VERSION="5.4.1"
+PHP_URL=http://us.php.net/distributions/php-${PHP_VERSION}.tar.bz2
+
+MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
+APACHE_DIR=httpd-${APACHE_VERSION}
+PHP_DIR=php-${PHP_VERSION}
+MCRYPT_ROOT=/app
+APACHE_ROOT=/app/apache
+PHP_ROOT=/app/php
+
+BUILD_DIR=`mktemp`
+
+pushd "$BUILD_DIR"
+
+log_action apache "Downloading apache from $APACHE_URL"
+curl $CURL_FLAGS "$APACHE_URL" | tar xj
+if [ ! -d "$APACHE_DIR" ]; then
+  log_fail "Failed to find apache directory $APACHE_DIR"
+fi 
+pushd "$APACHE_DIR"
+./configure --prefix=$APACHE_ROOT --enable-rewrite >> $BUILD_LOG 2>&1
+make >> $BUILD_LOG 2>&1
+make install >> $BUILD_LOG 2>&1
+make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
+popd
+
+log_action mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
+curl $CURL_FLAGS "$MCRYPT_URL" | tar xj
+if [ ! -d "$MCRYPT_DIR" ]; then
+  log_fail "Failed to find mcrypt directory $MCRYPT_DIR"
+fi 
+pushd "$MCRYPT_DIR" 
+autoconf -W no-obsolete -W no-syntax >> $BUILD_LOG 2>&1
+automake >> $BUILD_LOG 2>&1
+./configure --prefix="$MCRYPT_ROOT" >> $BUILD_LOG 2>&1
+make >> $BUILD_LOG 2>&1
+make install >> $BUILD_LOG 2>&1
+make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
+popd
+
+log_action php "Downloading php from $PHP_URL"
+curl $CURL_FLAGS "$PHP_URL" | tar xj
+if [ ! -d "$PHP_DIR" ]; then
+  log_fail "Failed to find php directory $PHP_DIR"
+fi
+pushd $PHP_DIR
+./configure --prefix="$PHP_ROOT" --with-apxs2=${APACHE_ROOT}/bin/apxs --with-mysql --with-pdo-mysql --with-pgsql --with-pdo-pgsql --with-iconv --with-gd --with-curl --with-config-file-path="$PHP_ROOT" --enable-soap=shared --with-openssl --with-mcrypt="$MCRYPT_ROOT" --with-jpeg-dir=/usr >> $BUILD_LOG 2>&1
+make >> $BUILD_LOG 2>&1
+make install >> $BUILD_LOG 2>&1
+make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
+popd
+
