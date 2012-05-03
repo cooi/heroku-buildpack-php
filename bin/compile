@@ -41,9 +41,28 @@ ls /
 pwd
 
 BUILD_LOG=`pwd`/build.log
+
 LIBMCRYPT_VERSION=2.5.8 
 MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
 MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
+
+APACHE_VERSION="2.2.22"
+APACHE_PATH="apache"
+PHP_VERSION="5.3.10"
+PHP_PATH="php"
+
+pushd "$BUILD_DIR"
+# move app things to www
+mkdir -p $CACHE_DIR/www
+mv * $CACHE_DIR/www
+mv $CACHE_DIR/www .
+
+# keep Procfile
+if [ -f www/Procfile ]; then
+  mv www/Procfile .
+fi
+popd
+
 log_action mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
 curl $CURL_FLAGS "$MCRYPT_URL" | tar xj
 if [ ! -d "$MCRYPT_DIR" ]; then
@@ -57,24 +76,8 @@ make >> $BUILD_LOG 2>&1
 make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
 popd
 
-cp $BUILD_LOG $BUILD_DIR/
-
-APACHE_VERSION="2.2.22"
-APACHE_PATH="apache"
-PHP_VERSION="5.3.10"
-PHP_PATH="php"
-
-cd $BUILD_DIR
-
-# move app things to www
-mkdir -p $CACHE_DIR/www
-mv * $CACHE_DIR/www
-mv $CACHE_DIR/www .
-
-# keep Procfile
-if [ -f www/Procfile ]; then
-  mv www/Procfile .
-fi
+pushd "$BUILD_DIR"
+cp $BUILD_LOG "$BUILD_DIR"
 
 APACHE_URL="https://s3.amazonaws.com/php-lp/apache-$APACHE_VERSION.tar.gz"
 echo "-----> Bundling Apache version $APACHE_VERSION"
