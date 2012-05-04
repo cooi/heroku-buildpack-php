@@ -103,22 +103,21 @@ DEVEL="$DEVEL_OTHER `find . -maxdepth 2 -name include`"
 MANUAL_OTHER="php/php"
 MANUAL="$MANUAL_OTHER `find . -maxdepth 2 -name man -o -name manual`"
 
-log_action main "Creating ${OUTPUT_DEVEL}.tar.bz2"
+log_action main "Creating ${BUILD_DIR}/${OUTPUT_DEVEL}.tar.bz2"
 tar cjf "${BUILD_DIR}/${OUTPUT_DEVEL}.tar.bz2" $DEVEL
-log_action main "Creating ${OUTPUT_MANUAL}.tar.bz2"
+log_action main "Creating ${BUILD_DIR}/${OUTPUT_MANUAL}.tar.bz2"
 tar cjf "${BUILD_DIR}/${OUTPUT_MANUAL}.tar.bz2" $MANUAL
 rm -rf $DEVEL $MANUAL
 rmdir share
-log_action main "Creating ${OUTPUT}.tar.bz2"
+log_action main "Creating ${BUILD_DIR}/${OUTPUT}.tar.bz2"
 tar cjf "${BUILD_DIR}/${OUTPUT}.tar.bz2" *
+popd >/dev/null
+popd
 
 mv "${BUILD_DIR}/${OUTPUT_DEVEL}.tar.bz2" \
   "${BUILD_DIR}/${OUTPUT_MANUAL}.tar.bz2" \
   "${BUILD_DIR}/${OUTPUT}.tar.bz2" \
   .
-
-popd >/dev/null
-popd
 
 log_action main "Output files: `ls *.tar.bz2`"
 log_action main "DONE"
