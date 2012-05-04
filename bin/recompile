@@ -96,4 +96,6 @@ tar cjf "${BUILD_DIR}/php.tar.bz2" *
 popd >/dev/null
 popd
 mv "$BUILD_DIR"/*.tar.bz2 .
+log_action "Done"
+ls *.tar.bz2
 
