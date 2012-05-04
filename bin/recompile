@@ -18,7 +18,7 @@ do_log()
   local prefix=$1
   local category=$2
   shift 2
-  echo "$prefix [${category}] $@" |tee -a $BUILD_LOG
+  echo "$prefix [${category}] $@" | tee -a $BUILD_LOG
 }
 
 CURL_FLAGS="--silent --max-time 60 --location"
@@ -30,6 +30,10 @@ APACHE_URL=http://www.apache.org/dist/httpd/httpd-${APACHE_VERSION}.tar.bz2
 PHP_VERSION="5.4.1"
 PHP_URL=http://us.php.net/distributions/php-${PHP_VERSION}.tar.bz2
 
+OUTPUT="apache-${APACHE_VERSION}_php-${PHP_VERSION}"
+OUTPUT_DEVEL="${OUTPUT}_devel"
+OUTPUT_MANUAL="${OUTPUT}_manual"
+
 MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
 APACHE_DIR=httpd-${APACHE_VERSION}
 PHP_DIR=php-${PHP_VERSION}
@@ -40,6 +44,7 @@ PHP_ROOT=/app/php
 BUILD_DIR=`mktemp -d`
 pushd "$BUILD_DIR"
 
+log_action main "Build log file: $BUILD_LOG"
 log_action apache "Downloading apache from $APACHE_URL"
 curl $CURL_FLAGS "$APACHE_URL" | tar xj
 if [ ! -d "$APACHE_DIR" ]; then
@@ -88,14 +93,27 @@ popd >/dev/null
 rm -rf "$PHP_DIR" 
 
 pushd app >/dev/null
-INCLUDES="`find . -maxdepth 2 -name include -o -name share`"
-OTHER="bin apache/build apache/manual apache/man php/php"
-tar cjf "${BUILD_DIR}/includes.tar.bz2" $INCLUDES $OTHER
-rm -rf $INCLUDES $OTHER
-tar cjf "${BUILD_DIR}/php.tar.bz2" *
+
+DEVEL_OTHER="bin apache/build share/aclocal"
+DEVEL="$DEVEL_OTHER `find . -maxdepth 2 -name include`"
+
+MANUAL_OTHER="php/php"
+MANUAL="$MANUAL_OTHER `find . -maxdepth 2 -name man -o -name manual`"
+
+tar cjf "${BUILD_DIR}/${OUTPUT_DEVEL}.tar.bz2" $DEVEL
+tar cjf "${BUILD_DIR}/${OUTPUT_MANUAL}.tar.bz2" $MANUAL
+rm -rf $DEVEL $MANUAL
+rmdir share
+tar cjf "${BUILD_DIR}/${OUTPUT}.tar.bz2" *
+
+mv "${BUILD_DIR}/${OUTPUT_DEVEL}.tar.bz2" \
+  "${BUILD_DIR}/${OUTPUT_MANUAL}.tar.bz2" \
+  "${BUILD_DIR}/${OUTPUT}.tar.bz2" \
+  .
+
 popd >/dev/null
 popd
-mv "$BUILD_DIR"/*.tar.bz2 .
-log_action "Done"
-ls *.tar.bz2
+
+log_action main "Output files: `ls *.tar.bz2`"
+log_action main "DONE"
 
