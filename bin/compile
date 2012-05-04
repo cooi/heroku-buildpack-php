@@ -7,7 +7,11 @@
 #set -e
 set -x
 
-BUILD_LOG=`pwd`/build.log
+APACHE_VERSION="2.2.22"
+PHP_VERSION="5.4.1"
+APACHE_BINARY_URL="http://projects.interlated.com.au/apache-${APACHE_VERSION}_php-${PHP_VERSION}.tar.bz2"
+APACHE_DIR=apache
+PHP_DIR=php
 
 log_action() 
 {
@@ -22,9 +26,8 @@ log_fail()
 do_log()
 {
   local prefix=$1
-  local category=$2
-  shift 2
-  echo "$prefix [${category}] $@" |tee -a $BUILD_LOG
+  shift
+  echo "$prefix $@"
 }
 
 CURL_FLAGS="--silent --max-time 60 --location"
@@ -34,80 +37,37 @@ BUILD_DIR=$1
 CACHE_DIR=$2
 LP_DIR=`cd $(dirname $0); cd ..; pwd`
 
+pushd "$BUILD_DIR"
+
 # include .files when moving things around
 shopt -s dotglob
 
-LIBMCRYPT_VERSION=2.5.8 
-MCRYPT_DIR=libmcrypt-${LIBMCRYPT_VERSION}
-MCRYPT_URL=http://downloads.sourceforge.net/project/mcrypt/Libmcrypt/${LIBMCRYPT_VERSION}/libmcrypt-${LIBMCRYPT_VERSION}.tar.bz2 
-
-APACHE_VERSION="2.2.22"
-APACHE_DIR=httpd-${APACHE_VERSION}
-APACHE_URL=http://www.apache.org/dist/httpd/httpd-${APACHE_VERSION}.tar.bz2
-APACHE_ROOT=/app/apache
-
-PHP_VERSION="5.4.1"
-PHP_DIR=php-${PHP_VERSION}
-PHP_URL=http://us.php.net/distributions/php-${PHP_VERSION}.tar.bz2
-PHP_ROOT=/app/php
-
-pushd "$BUILD_DIR"
 # move app things to www
-mkdir -p $CACHE_DIR/www
-mv * $CACHE_DIR/www
-mv $CACHE_DIR/www .
+mkdir -p "${CACHE_DIR}/www"
+mv * "${CACHE_DIR}/www"
+mv "${CACHE_DIR}/www" .
 
 # keep Procfile
 if [ -f www/Procfile ]; then
   mv www/Procfile .
 fi
-popd
 
-log_action apache "Downloading apache from $APACHE_URL"
-curl $CURL_FLAGS "$APACHE_URL" | tar xj
-if [ ! -d "$APACHE_DIR" ]; then
-  log_fail "Failed to find apache directory $APACHE_DIR"
-fi 
-pushd "$APACHE_DIR"
-./configure --prefix=$APACHE_ROOT --enable-rewrite >> $BUILD_LOG 2>&1
-make >> $BUILD_LOG 2>&1
-#make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
-make install >> $BUILD_LOG 2>&1
-popd
-
-log_action mcrypt "Downloading libmcrypt from ${MCRYPT_URL}"
-curl $CURL_FLAGS "$MCRYPT_URL" | tar xj
-if [ ! -d "$MCRYPT_DIR" ]; then
-  log_fail "Failed to find mcrypt directory $MCRYPT_DIR"
-fi 
-
-pushd "$MCRYPT_DIR" 
-autoconf -W no-obsolete -W no-syntax >> $BUILD_LOG 2>&1
-automake >> $BUILD_LOG 2>&1
-./configure --prefix=/app >> $BUILD_LOG 2>&1
-make >> $BUILD_LOG 2>&1
-#make DESTDIR=$BUILD_DIR install >> $BUILD_LOG 2>&1
-make install >> $BUILD_LOG 2>&1
-popd
-
-log_action php "Downloading php from $PHP_URL"
-curl $CURL_FLAGS "$PHP_URL" | tar xj
-if [ ! -d "$PHP_DIR" ]; then
-  log_fail "Failed to find php directory $PHP_DIR"
+log_action "Bundling apache $APACHE_VERSION and php $PHP_VERSION from $APACHE_BINARY_URL"
+curl $CURL_FLAGS "$APACHE_BINARY_URL" | tar xj
+if [ ! -d $APACHE_DIR ] || [ ! -d $PHP_DIR ]; then
+  log_fail "Could not find $APACHE_DIR or $PHP_DIR - download may have failed"
+  log_fail "pwd listing: `ls`"
+  exit 1
 fi
-pushd $PHP_DIR
-./configure --prefix=$PHP_ROOT --with-apxs2=${APACHE_ROOT}/bin/apxs --with-mysql --with-pdo-mysql --with-pgsql --with-pdo-pgsql --with-iconv --with-gd --with-curl --with-config-file-path=$PHP_ROOT --enable-soap=shared --with-openssl --with-mcrypt=/app --with-jpeg-dir=/usr
-make
-make install
-#make >> $BUILD_LOG 2>&1
 
-popd
+# update config files
+cp $LP_DIR/conf/httpd.conf $APACHE_DIR/conf
+cp $LP_DIR/conf/php.ini "$PHP_DIR"
 
+# make php available on bin
+[ -d bin ] || mkdir -p bin
+ln -s /app/php/bin/php bin/php
 
-#cp -a ${BUILD_DIR}/app/* "$BUILD_DIR"
-
-pushd "$BUILD_DIR"
-cp $BUILD_LOG "$BUILD_DIR"
 
 cat >>boot.sh <<EOF
 for var in \`env|cut -f1 -d=\`; do
@@ -117,48 +77,11 @@ touch /app/apache/logs/error_log
 touch /app/apache/logs/access_log
 tail -F /app/apache/logs/error_log &
 tail -F /app/apache/logs/access_log &
-export LD_LIBRARY_PATH=/app/php/ext
-export PHP_INI_SCAN_DIR=/app/www
 echo "Launching apache"
 exec /app/apache/bin/httpd -DNO_DETACH
 EOF
 
 chmod +x boot.sh
 
-ls $BUILD_DIR
-
-ls $LP_DIR
-
 # clean the cache
 rm -rf $CACHE_DIR/*
-
-ls $BUILD_DIR
-
-ls $LP_DIR
-
-exit
-
-PHPSO=apache/modules/libphp5.so
-if [ -f $PHPSO ]; then
-  echo "Removing $PHPSO"
-  rm "$PHPSO"
-fi
-PHPSO_URL="http://projects.interlated.com.au/libphp5.so"
-echo "-----> Copying $PHPSO_URL"
-curl $CURL_FLAGS "$PHPSO_URL" -o $PHPSO
-ls -l $PHPSO
-id
-
-EXTDIR=$PHP_PATH/ext
-[ -d $EXTDIR ] || mkdir -p $EXTDIR
-ln -s /lib/libcrypto.so.0.9.8 $EXTDIR/libcrypto.so.6
-ln -s /lib/libssl.so.0.9.8 $EXTDIR/libssl.so.6
-
-# update config files
-cp $LP_DIR/conf/httpd.conf $APACHE_PATH/conf
-cp $LP_DIR/conf/php.ini php
-
-# make php available on bin
-mkdir -p bin
-ln -s /app/php/bin/php bin/php
-
